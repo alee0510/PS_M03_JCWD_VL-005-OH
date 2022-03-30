@@ -4,7 +4,8 @@
   "description": "for education purpose",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node .",
+    "dev" : "nodemon ."
   },
   "author": "hafeiy",
   "license": "ISC",
