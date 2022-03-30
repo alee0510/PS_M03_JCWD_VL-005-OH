@@ -2,6 +2,7 @@
 const express = require('express')
 const fs = require('fs')
 const path = require('path')
+const GUID = require('guid')
 
 // initialize api
 const app =  express()
@@ -68,6 +69,66 @@ app.get('/api/clients/:id', (req, res) => {
 // 4. push new data to result from JSON.parse
 // 5. convert new data => JSON.stringfy(new data)
 // 6. fs.writeFile
+app.post('/api/clients', (req, res) => {
+    const body = req.body
+
+    // validation => check req.body is exists?
+    if (!body.hasOwnProperty('name')) {
+        return res.status(400).send(`Bad Request : body cannot be empty.`)
+    }
+
+    // PR :
+    // buat sebuah fungsi untuk validasi -> 
+    // 1. name -> max 13 chars, not include number
+    // 2. email -> harus valid
+    // 3. format phone number -> +62-xxx-xxxx-xxx
+    // 4. iban -> valdiate digits -> dimulai dengan 2 huruf
+    // 5. CVV -> 3 digits
+
+    // create id => GUID
+    const UID = GUID.raw().toUpperCase()
+    console.log('new id : ', UID)
+
+    body.id = UID
+
+    // read data
+    fs.readFile(path.join(__dirname + '/clients.json'), (error, data) => {
+        // check error
+        if (error) {
+            console.log('error :', error)
+            return res.status(500).send('Internal Service Error.')
+        }
+
+        // prase data
+        let clients = JSON.parse(data)
+
+        // add new data
+        clients.push(body)
+        
+        // update data in file client.json
+        fs.writeFile(
+            path.join(__dirname + '/clients.json'), 
+            JSON.stringify(clients, null, 2), 
+            (error) => {
+                if (error) {
+                    console.log('error :', error)
+                    return res.status(500).send('Internal Service Error.')
+                }
+    
+                // send info to client if new data has been successfully created
+                res.status(201).send(`user with id : ${UID} has been created.`)
+            }
+        )
+    })
+})
+
+// PR : protocol patch
+
+// delete data => api/clients/:id
+// 1. get id
+// 2. get data => fs.readFile => JSON.pares => search by id => data exist ? next : error
+// 3. delete => split(index, 1)
+// 4. fs.writeFile
 
 // binding to our local port
 const PORT = 5000

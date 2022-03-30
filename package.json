@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "start": "node .",
-    "dev" : "nodemon ."
+    "dev": "nodemon ."
   },
   "author": "hafeiy",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.3"
+    "express": "^4.17.3",
+    "guid": "^0.0.12"
   }
 }
