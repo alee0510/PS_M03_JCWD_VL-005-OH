@@ -129,6 +129,59 @@ app.post('/api/clients', (req, res) => {
 // 2. get data => fs.readFile => JSON.pares => search by id => data exist ? next : error
 // 3. delete => split(index, 1)
 // 4. fs.writeFile
+app.delete('/api/clients/:id', (req, res) => {
+    const id = req.params.id
+
+    // validate id
+    const valid = GUID.isGuid(id.toLowerCase())
+    if (!valid) {
+        return res.status(400).send(`Bad Request : ID doesn't valid.`)
+    }
+
+    // read file 
+    fs.readFile(path.join(__dirname + '/clients.json'), (error, data) => {
+        // check error
+        if (error) {
+            console.log('error :', error)
+            return res.status(500).send('Internal Service Error.')
+        }
+
+        // parse data
+        let clients = JSON.parse(data)
+
+        // check client's data by id
+        let index
+        for (let i = 0; i < clients.length - 1; i++) {
+            if (clients[i].id === id) {
+                index = i
+                break
+            }
+        }
+
+        // if client doesn't exist
+        if (index === undefined) {
+            return res.status(404).send(`client with id : ${id} doesn't found.`)
+        }
+
+        // if exists => do delete
+        clients.splice(index, 1)
+        
+        // update file clients.json
+        fs.writeFile(
+            path.join(__dirname + '/clients.json'),
+            JSON.stringify(clients, null, 2),
+            (error) => {
+                if (error) {
+                    console.log('error : ', error)
+                    return res.status(500).send('Internal Service Error.')
+                }
+                
+                // if success => send respond to client side
+                res.status(200).send(`client with id : ${id} has been deleted.`)
+            }
+        )
+    })
+})
 
 // binding to our local port
 const PORT = 5000
