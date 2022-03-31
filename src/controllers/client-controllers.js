@@ -1,6 +1,7 @@
 const fs = require('fs')
 const GUID = require('guid')
 const path = require('path')
+const { postValidation } = require('../helpers/client-validation')
 const __dirclients = './__database__'
 
 const getClients = (req, res) => {
@@ -49,34 +50,12 @@ const getClientById = (req, res) => {
 
 const postClient = (req, res) => {
     const body = req.body
-
-    // validation => check req.body is exists?
-    if (body === undefined ) {
-        return res.status(400).send(`Bad Request : body cannot be empty.`)
-    }
-
-    // PR :
-    // buat sebuah fungsi untuk validasi -> 
-    // 1. name -> max 13 chars, not include number
-    if (body.name.length > 13 || !body.name.length) {
-        return res.status(400).send(`Bad Request : client name cannot be more than 13 chars.`)
-    }
-
-    // 2. email -> harus valid
-    const EmailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
-    if (!EmailRegex.test(body.email) ) {
-        return res.status(400).send(`Bad Request : email doesn't valid.`)
-    }
-    // 3. format phone number -> +62-xxx-xxxx-xxx
-    const PhoneRegex =  /^[+]*[(]{0,1}[0-9]{1,3}[)]{0,1}[-\s\./0-9]*$/g
-    if (!PhoneRegex.test(body.phone)) {
-        return res.status(400).send(`Bad Request : phone number doesn't valid.`)
-    }
-    // 4. iban -> valdiate digits -> dimulai dengan 2 huruf
+    console.log('body : ', body)
     
-    // 5. CVV -> 3 digits
-    if (String(body.cvv).length > 3) {
-        return res.status(400).send(`Bad Request : CVV number doesn't valid.`)
+    // data validation
+    const error = postValidation(body)
+    if (error) {
+        return res.status(200).send(error)
     }
 
     // create id => GUID
@@ -96,6 +75,36 @@ const postClient = (req, res) => {
         // prase data
         let clients = JSON.parse(data)
 
+        // validate duplicate data
+        // uniques => name, email, phone, iban, cvv
+        let isUnique = true
+        for (let i = 0; i < clients.length; i++) {
+            if (clients[i].name === body.name) {
+                isUnique = false
+                break
+            }
+            if (clients[i].email === body.email) {
+                isUnique = false
+                break
+            }
+            if (clients[i].phone === body.phone) {
+                isUnique = false
+                break
+            }
+            if (clients[i].iban === body.body) {
+                isUnique = false
+                break
+            }
+            if (clients[i].cvv === body.cvv) {
+                isUnique = false
+                break
+            }
+        }
+
+        if(!isUnique) {
+            return res.status(400).send('Bad Request : data cannot be duplicate.')
+        }
+
         // add new data
         clients.push(body)
         
@@ -114,6 +123,13 @@ const postClient = (req, res) => {
             }
         )
     })
+}
+
+const patchClient = (req, res) => {
+    // get id
+    // check data with id ? exist ?
+    // before do update -> do validation data
+    // write file
 }
 
 const deleteClient = (req, res) => {
