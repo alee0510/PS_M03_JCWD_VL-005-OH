@@ -1,24 +1,10 @@
-// import module
-const express = require('express')
 const fs = require('fs')
-const path = require('path')
 const GUID = require('guid')
+const path = require('path')
+const __dirclients = './__database__'
 
-// initialize api
-const app =  express()
-
-// initialis middleware
-app.use(express.json())
-
-
-// home route
-app.get('/', (req, res) => {
-    res.status(200).send(`<h1>Wellcome to my REST APIs</h1>`)
-})
-
-// get all clients
-app.get('/api/clients', (req, res) => {
-    fs.readFile(path.join(__dirname + '/clients.json'), (error, data) => {
+const getClients = (req, res) => {
+    fs.readFile(path.join(__dirclients + '/clients.json'), (error, data) => {
         // check error
         if (error) {
             console.log('error :', error)
@@ -28,13 +14,12 @@ app.get('/api/clients', (req, res) => {
         // if success -> data exist
         res.status(200).send(JSON.parse(data))
     })
-})
+}
 
-// get single data => /api/clients/:id
-app.get('/api/clients/:id', (req, res) => {
+const getClientById = (req, res) => {
     const id = req.params.id
     console.log('id : ', id)
-    fs.readFile(path.join(__dirname + '/clients.json'), (error, data) => {
+    fs.readFile(path.join(__dirclients + '/clients.json'), (error, data) => {
         // check error
         if (error) {
             console.log('error :', error)
@@ -60,30 +45,39 @@ app.get('/api/clients/:id', (req, res) => {
         // send respond to client if result exist
         res.status(200).send(client)
     })
-})
+}
 
-// post data => /api/clients
-// 1. get req.body
-// 2. create id => add to body, id => guid npm
-// 3. read file => JSON.parse(data) => [{...}, {...}, ...]
-// 4. push new data to result from JSON.parse
-// 5. convert new data => JSON.stringfy(new data)
-// 6. fs.writeFile
-app.post('/api/clients', (req, res) => {
+const postClient = (req, res) => {
     const body = req.body
 
     // validation => check req.body is exists?
-    if (!body.hasOwnProperty('name')) {
+    if (body === undefined ) {
         return res.status(400).send(`Bad Request : body cannot be empty.`)
     }
 
     // PR :
     // buat sebuah fungsi untuk validasi -> 
     // 1. name -> max 13 chars, not include number
+    if (body.name.length > 13 || !body.name.length) {
+        return res.status(400).send(`Bad Request : client name cannot be more than 13 chars.`)
+    }
+
     // 2. email -> harus valid
+    const EmailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    if (!EmailRegex.test(body.email) ) {
+        return res.status(400).send(`Bad Request : email doesn't valid.`)
+    }
     // 3. format phone number -> +62-xxx-xxxx-xxx
+    const PhoneRegex =  /^[+]*[(]{0,1}[0-9]{1,3}[)]{0,1}[-\s\./0-9]*$/g
+    if (!PhoneRegex.test(body.phone)) {
+        return res.status(400).send(`Bad Request : phone number doesn't valid.`)
+    }
     // 4. iban -> valdiate digits -> dimulai dengan 2 huruf
+    
     // 5. CVV -> 3 digits
+    if (String(body.cvv).length > 3) {
+        return res.status(400).send(`Bad Request : CVV number doesn't valid.`)
+    }
 
     // create id => GUID
     const UID = GUID.raw().toUpperCase()
@@ -92,7 +86,7 @@ app.post('/api/clients', (req, res) => {
     body.id = UID
 
     // read data
-    fs.readFile(path.join(__dirname + '/clients.json'), (error, data) => {
+    fs.readFile(path.join(__dirclients + '/clients.json'), (error, data) => {
         // check error
         if (error) {
             console.log('error :', error)
@@ -107,7 +101,7 @@ app.post('/api/clients', (req, res) => {
         
         // update data in file client.json
         fs.writeFile(
-            path.join(__dirname + '/clients.json'), 
+            path.join(__dirclients + '/clients.json'), 
             JSON.stringify(clients, null, 2), 
             (error) => {
                 if (error) {
@@ -120,16 +114,9 @@ app.post('/api/clients', (req, res) => {
             }
         )
     })
-})
+}
 
-// PR : protocol patch
-
-// delete data => api/clients/:id
-// 1. get id
-// 2. get data => fs.readFile => JSON.pares => search by id => data exist ? next : error
-// 3. delete => split(index, 1)
-// 4. fs.writeFile
-app.delete('/api/clients/:id', (req, res) => {
+const deleteClient = (req, res) => {
     const id = req.params.id
 
     // validate id
@@ -139,7 +126,7 @@ app.delete('/api/clients/:id', (req, res) => {
     }
 
     // read file 
-    fs.readFile(path.join(__dirname + '/clients.json'), (error, data) => {
+    fs.readFile(path.join(__dirclients + '/clients.json'), (error, data) => {
         // check error
         if (error) {
             console.log('error :', error)
@@ -168,7 +155,7 @@ app.delete('/api/clients/:id', (req, res) => {
         
         // update file clients.json
         fs.writeFile(
-            path.join(__dirname + '/clients.json'),
+            path.join(__dirclients + '/clients.json'),
             JSON.stringify(clients, null, 2),
             (error) => {
                 if (error) {
@@ -181,8 +168,11 @@ app.delete('/api/clients/:id', (req, res) => {
             }
         )
     })
-})
+}
 
-// binding to our local port
-const PORT = 5000
-app.listen(PORT, () => console.log(`API run at port ${PORT}`))
+module.exports = { 
+    getClients,
+    getClientById,
+    postClient,
+    deleteClient
+}
