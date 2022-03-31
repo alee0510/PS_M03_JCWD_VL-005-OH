@@ -1,7 +1,7 @@
 const fs = require('fs')
 const GUID = require('guid')
 const path = require('path')
-const { postValidation } = require('../helpers/client-validation')
+const { postValidation, patchValidation } = require('../helpers/client-validation')
 const __dirclients = './__database__'
 
 const getClients = (req, res) => {
@@ -126,10 +126,65 @@ const postClient = (req, res) => {
 }
 
 const patchClient = (req, res) => {
-    // get id
-    // check data with id ? exist ?
-    // before do update -> do validation data
-    // write file
+    const id = req.params.id
+    const body =  req.body
+
+    // validate id
+    const valid = GUID.isGuid(id.toLowerCase())
+    console.log('valid : ', valid)
+    if (!valid) {
+        return res.status(400).send(`Bad Request : ID doesn't valid.`)
+    }
+
+    // data validation
+    const error = patchValidation(body)
+    if (error) {
+        return res.status(400).send(error)
+    }
+
+    // if data valid
+    fs.readFile(
+        path.join(__dirclients + '/clients.json'),
+        (error, data) => {
+            // check error
+            if (error) {
+                console.log('error :', error)
+                return res.status(500).send('Internal Service Error.')
+            }
+
+            // check if data exist
+            const clients = JSON.parse(data)
+            let index
+            for (let i = 0; i < clients.length; i++) {
+                if (clients[i].id === id) {
+                    index = i
+                    break
+                }
+            }
+            if (index === undefined) {
+                return res.status(404).send(`client with id : ${id} doesn't found.`)
+            }
+
+            // do update
+            clients[index] = Object.assign(clients[index], body)
+
+            // update data to clients.json
+            fs.writeFile(
+                path.join(__dirclients + '/clients.json'),
+                JSON.stringify(clients, null, 2),
+                (error) => {
+                    // check error
+                    if (error) {
+                        console.log('error :', error)
+                        return res.status(500).send('Internal Service Error.')
+                    }
+
+                    res.status(200).send(`client with id : ${id} has been updated.`)
+                }
+            )
+            
+        }
+    )
 }
 
 const deleteClient = (req, res) => {
@@ -190,5 +245,6 @@ module.exports = {
     getClients,
     getClientById,
     postClient,
+    patchClient,
     deleteClient
 }
