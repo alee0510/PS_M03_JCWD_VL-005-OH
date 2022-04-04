@@ -24,3 +24,7 @@ SELECT country, COUNT(*) AS total_customers FROM customers GROUP BY country;
 
 -- 1.4 GET average credit limit of customers for each city and sort id by its country
 -- 1.5 GET the hight credit limit of customers for each city, show its name and sort by its country
+-- 1.6 GET total customer for each sales_rep
+-- 1.7 GET total customer for each sales_rep in each country / city
+-- 1.8 GET total customer and average credit limit for each sales in each city or country
+-- 1.9 GET customers data with name start by letter 'A', ex. Artelier, Australian, etc. 
