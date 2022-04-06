@@ -70,3 +70,11 @@ GROUP BY em1.employeeNumber
 ORDER BY total_customer;
 
 -- 1.5 GET data customer plus info products and status order
+SELECT cs.customerNumber, cs.customerName, cs.country,
+od.orderDate, od.status,
+ol.productCode, ol.quantityOrdered,
+pd.productName
+FROM customers AS cs
+JOIN orders AS od ON cs.customerNumber = od.customerNumber
+JOIN orderdetails AS ol ON ol.orderNumber = od.orderNumber
+JOIN products AS pd ON pd.productCode = ol.productCode;
