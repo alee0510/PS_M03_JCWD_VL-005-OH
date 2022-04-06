@@ -37,8 +37,36 @@ COUNT(cs.customerName) total_customer,
 cs.country, cs.city
 FROM employees AS em
 JOIN offices AS oc ON em.officeCode = oc.officeCode
-LEFT JOIN customers AS cs ON cs.salesRepEmployeeNumber = em.employeeNumber
+JOIN customers AS cs ON cs.salesRepEmployeeNumber = em.employeeNumber
 GROUP BY em.employeeNumber;
 
 -- 1.3 GET data employee(Sales Rep) who has 0 customer
+SELECT em.employeeNumber,
+CONCAT(em.firstName, ' ', em.lastName) employeeName,
+em.jobTitle,
+oc.city,
+COUNT(cs.customerName) total_customer,
+cs.country, cs.city
+FROM employees AS em
+JOIN offices AS oc ON em.officeCode = oc.officeCode
+LEFT JOIN customers AS cs ON cs.salesRepEmployeeNumber = em.employeeNumber
+WHERE cs.customerNumber is NULL AND em.jobTitle = 'Sales Rep'
+GROUP BY em.employeeNumber;
+
 -- 1.4 according to case no 1.2 & 1.2b, plus add head or boss/report to info + job title
+SELECT
+em1.employeeNumber,
+CONCAT(em1.firstName, ' ', em1.lastName) employeeName,
+em1.jobTitle,
+CONCAT(em2.firstName, ' ', em2.lastName) reportTo,
+em2.jobTitle,
+COUNT(cs.customerNumber) total_customer,
+cs.country,
+cs.city
+FROM employees AS em1
+LEFT JOIN employees AS em2 ON em2.employeeNumber = em1.reportsTo
+LEFT JOIN customers AS cs ON cs.salesRepEmployeeNumber = em1.employeeNumber
+GROUP BY em1.employeeNumber
+ORDER BY total_customer;
+
+-- 1.5 GET data customer plus info products and status order
