@@ -28,4 +28,17 @@ ON cs.salesRepEmployeeNumber = em.employeeNumber
 GROUP BY em.employeeNumber
 ORDER BY cs.country;
 
--- 1.2 GET data employee, office, job title, total customers, customer country & city
+-- 1.2 & 1.2a GET data employee, office, job title, total customers, customer country & city
+SELECT em.employeeNumber,
+CONCAT(em.firstName, ' ', em.lastName) employeeName,
+em.jobTitle,
+oc.city,
+COUNT(cs.customerName) total_customer,
+cs.country, cs.city
+FROM employees AS em
+JOIN offices AS oc ON em.officeCode = oc.officeCode
+LEFT JOIN customers AS cs ON cs.salesRepEmployeeNumber = em.employeeNumber
+GROUP BY em.employeeNumber;
+
+-- 1.3 GET data employee(Sales Rep) who has 0 customer
+-- 1.4 according to case no 1.2 & 1.2b, plus add head or boss/report to info + job title
