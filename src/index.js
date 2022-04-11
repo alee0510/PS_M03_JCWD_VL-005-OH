@@ -1,23 +1,31 @@
-// import module
+// import modules
 const express = require('express')
+const dotenv = require('dotenv')
+dotenv.config()
 
-// initialize api
-const app =  express()
+// intialize
+const app = express()
 
-// initialis middleware
+// configure middleware
 app.use(express.json())
 
+// test database connection
+const connection = require('./config')
+connection.connect((error) => {
+    if (error) {
+        console.log('error : ', error)
+    }
 
-// home route
-app.get('/', (req, res) => {
-    res.status(200).send(`<h1>Wellcome to my REST APIs</h1>`)
+    console.log(`database connection established at id : ${connection.threadId}.`)
 })
 
-// implement routes
-const routes = require('./routes')
-app.use('/api', routes.clientRoutes)
+// home route
+app.get('/', (req, res) => res.status(200).send('<h1>Wellcome to My REST-APIs</h1>'))
 
+// setup router
+const routers = require('./routes')
+app.use('/api', routers.student_router)
 
-// binding to our local port
-const PORT = 5000
-app.listen(PORT, () => console.log(`API run at port ${PORT}`))
+// binding
+const PORT = process.env.PORT || 5000
+app.listen(PORT, () => console.log(`API is connected at port : ${PORT}.`))

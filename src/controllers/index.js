@@ -1,6 +1,5 @@
 // import * modules
-const client = require('./client-controllers')
+const student_controllers = require('./student-controllers')
 
 // export * modules
-module.exports = { client }
-
+module.exports = { student_controllers }

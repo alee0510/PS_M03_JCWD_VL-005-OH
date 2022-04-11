@@ -1,5 +1,5 @@
 // import * modules
-const clientRoutes = require('./client-routes')
+const student_router = require('./student-routers')
 
-// export * moudules
-module.exports = { clientRoutes }
+// export * modules
+module.exports = { student_router }
