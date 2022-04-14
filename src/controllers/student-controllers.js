@@ -3,7 +3,7 @@ const database = require('../config').promise()
 const http_status = require('../helpers/http-status')
 const createError = require('../helpers/create-error')
 const createRespond = require('../helpers/create-respond')
-const { postStudentSchema } = require('../helpers/validation-schema')
+const { postStudentSchema, patchStudentSchema } = require('../helpers/validation-schema')
 
 // promise wrapper
 module.exports.getStudents = async (req, res) => {
@@ -49,7 +49,7 @@ module.exports.getStudents = async (req, res) => {
 
 // GET : get student by ID
 module.exports.getStudentById = async (req, res) => {
-    const student_id = req.params.student_id
+    const studentId = req.params.studentId
     try {
         const GET_STUDENT_BY_ID = `
             SELECT st.id, st.studentId, st.name, st.email, pg.program, ct.city 
@@ -58,7 +58,7 @@ module.exports.getStudentById = async (req, res) => {
             JOIN city AS ct ON ct.id = st.cityId
             WHERE studentId = ?; 
         `
-        const [ STUDENT ] = await database.execute(GET_STUDENT_BY_ID, [student_id])
+        const [ STUDENT ] = await database.execute(GET_STUDENT_BY_ID, [studentId])
 
         // validate
         if (!STUDENT.length) {
@@ -146,7 +146,56 @@ module.exports.postStudent = async (req, res) => {
 // CHECK DATA BY ID ? EXIST ?
 // VALIDATE BODY ?
 // DEFINE QUERY -> dynamic req.body && req.body is not empty
+module.exports.patchStudent = async (req, res) => {
+    const studentId = req.params.studentId
+    const body = req.body
+    try {
+        // check data -> if student with studentId exist in our database
+        const CHECK_DATA = `SELECT id FROM students WHERE studentId = ?;`
+        const [ STUDENT ] = await database.execute(CHECK_DATA, [studentId])
+        if (!STUDENT.length) {
+            throw new createError(http_status.BAD_REQUEST, 'id not found.')
+        }
+
+        // is body empty?
+        const isEmpty = !Object.keys(body).length
+        if (isEmpty) {
+            throw new createError(http_status.BAD_REQUEST, 'bad request.')
+        }
+        
+        // validate body's value
+        const { error } = patchStudentSchema.validate(body)
+        if (error) {
+            throw new createError(http_status.BAD_REQUEST, error.details[0].message)
+        }
+
+        // define update query
+        let query = []
+        for (let key in body) {
+            query.push(`${key}='${body[key]}'`)
+        }
+        const UPDATE_STUDENT = `UPDATE students SET ${query} WHERE studentId = ${database.escape(studentId)};`
+        console.log(UPDATE_STUDENT)
+        const [ INFO ] = await database.execute(UPDATE_STUDENT)
+
+        // create respond
+        const respond = new createRespond(
+            http_status.OK,
+            'update',
+            true,
+            1,
+            1,
+            INFO.info
+        )
+        res.status(respond.status).send(respond)
+    } catch (error) {
+        // validate error
+        const isTrusted = error instanceof createError
+        if (!isTrusted) {
+            error = new createError(http_status.INTERNAL_SERVER_ERROR, error.sqlMessage)
+        }
+        res.status(error.status).send(error) 
+    }
+}
 
 // DELETE
-
-
