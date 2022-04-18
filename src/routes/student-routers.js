@@ -8,6 +8,7 @@ router.get('/students', student_controllers.getStudents)
 router.get('/students/:studentId', student_controllers.getStudentById)
 router.post('/students', student_controllers.postStudent)
 router.patch('/students/:studentId', student_controllers.patchStudent)
+router.delete('/students/hard/:studentId', student_controllers.hardDeleteStudent)
 
 // export * router
 module.exports = router

@@ -198,4 +198,38 @@ module.exports.patchStudent = async (req, res) => {
     }
 }
 
-// DELETE
+// DELETE -> HARD DELETE
+module.exports.hardDeleteStudent = async (req, res) => {
+    const studentId = req.params.studentId // data from URL (query param & request param)
+    console.log('studentId : ', studentId)
+    try {
+        const CHECK_DATA = `SELECT id FROM students WHERE studentId = ?;`
+        const [ STUDENT ] = await database.execute(CHECK_DATA, [studentId])
+        console.log('student : ', STUDENT)
+        if (!STUDENT.length) {
+            throw new createError(http_status.BAD_REQUEST, 'id not found.')
+        }
+
+        // do query delete -> hard delete
+        const DELETE_STUDENT = `DELETE FROM students WHERE studentId = ?;`
+        const [ INFO ] = await database.execute(DELETE_STUDENT, [studentId])
+
+        // create respond
+        const respond = new createRespond(http_status.OK, 'hard delete', true, 1, 1, INFO.info)
+        res.status(respond.status).send(respond)``
+    } catch (error) {
+        // validate error
+        const isTrusted = error instanceof createError
+        if (!isTrusted) {
+            error = new createError(http_status.INTERNAL_SERVER_ERROR, error.sqlMessage)
+        }
+        res.status(error.status).send(error) 
+    }
+}
+
+// DELETE -> SOFT DELETE
+// 1. check data student by studentId
+// 2. define query -> UPDATE -> set status from 1 to 0, 1 active or 0 inactive
+
+// MODIFY GET REQUEST for all student and student by its studentId
+// MAKE USER CLIENT ONLY GET ACTIVE DATA
