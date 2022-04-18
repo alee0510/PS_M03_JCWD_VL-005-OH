@@ -19,9 +19,10 @@ module.exports.getStudents = async (req, res) => {
             FROM students AS st
             JOIN programs AS pg ON pg.id = st.programId
             JOIN city AS ct ON ct.id = st.cityId
+            WHERE st.status = 1
             LIMIT ${database.escape(offset)}, ${database.escape(limit)}; 
         `
-        const GET_TOTAL_STUDENT = `SELECT COUNT(*) AS total FROM students;`
+        const GET_TOTAL_STUDENT = `SELECT COUNT(*) AS total FROM students WHERE status = 1;`
 
         // execute query
         const [ STUDENTS ] = await database.execute(GET_STUDENT, [offset, limit])
@@ -56,13 +57,13 @@ module.exports.getStudentById = async (req, res) => {
             FROM students AS st
             JOIN programs AS pg ON pg.id = st.programId
             JOIN city AS ct ON ct.id = st.cityId
-            WHERE studentId = ?; 
+            WHERE studentId = ? AND status = 1; 
         `
         const [ STUDENT ] = await database.execute(GET_STUDENT_BY_ID, [studentId])
 
         // validate
         if (!STUDENT.length) {
-            throw new createError(http_status.BAD_REQUEST, 'bad request.')
+            throw new createError(http_status.NOT_FOUND, 'id not found.')
         } 
 
         // create respond
@@ -154,7 +155,7 @@ module.exports.patchStudent = async (req, res) => {
         const CHECK_DATA = `SELECT id FROM students WHERE studentId = ?;`
         const [ STUDENT ] = await database.execute(CHECK_DATA, [studentId])
         if (!STUDENT.length) {
-            throw new createError(http_status.BAD_REQUEST, 'id not found.')
+            throw new createError(http_status.NOT_FOUND, 'id not found.')
         }
 
         // is body empty?
@@ -207,7 +208,7 @@ module.exports.hardDeleteStudent = async (req, res) => {
         const [ STUDENT ] = await database.execute(CHECK_DATA, [studentId])
         console.log('student : ', STUDENT)
         if (!STUDENT.length) {
-            throw new createError(http_status.BAD_REQUEST, 'id not found.')
+            throw new createError(http_status.NOT_FOUND, 'id not found.')
         }
 
         // do query delete -> hard delete
@@ -230,6 +231,32 @@ module.exports.hardDeleteStudent = async (req, res) => {
 // DELETE -> SOFT DELETE
 // 1. check data student by studentId
 // 2. define query -> UPDATE -> set status from 1 to 0, 1 active or 0 inactive
+module.exports.softDeleteStudent = async (req, res) => {
+    const studentId = req.params.studentId
+    try {
+        // check data
+        const CHECK_DATA = `SELECT id FROM students WHERE studentId = ? AND status = 1;`
+        const [ STUDENT ] = await database.execute(CHECK_DATA, [studentId])
+        if (!STUDENT.length) {
+            throw new createError(http_status.NOT_FOUND, 'id not found.')
+        }
+
+        // if data exist -> define query for soft-delete
+        const SOFT_DELETE_STUDENT = `UPDATE students SET status = 0 WHERE studentId = ?;`
+        const [ INFO ] = await database.execute(SOFT_DELETE_STUDENT, [studentId])
+
+        // create respond
+        const respond = new createRespond(http_status.OK, 'soft delete', true, 1, 1, INFO.info)
+        res.status(respond.status).send(respond)
+    } catch (error) {
+        // validate error
+        const isTrusted = error instanceof createError
+        if (!isTrusted) {
+            error = new createError(http_status.INTERNAL_SERVER_ERROR, error.sqlMessage)
+        }
+        res.status(error.status).send(error)   
+    }
+}
 
 // MODIFY GET REQUEST for all student and student by its studentId
 // MAKE USER CLIENT ONLY GET ACTIVE DATA
