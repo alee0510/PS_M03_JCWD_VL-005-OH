@@ -29,6 +29,7 @@ const routers = require('./routes')
 app.use('/api', routers.student_router)
 app.use('/api', routers.program_router)
 app.use('/api', routers.city_router)
+app.use('/api', routers.user_router)
 
 // binding
 const PORT = process.env.PORT || 5000

@@ -15,3 +15,9 @@ module.exports.patchStudentSchema = Joi.object({
     cityId : Joi.number()
 })
 
+module.exports.registerSchema = Joi.object({
+    username : Joi.string().min(6).max(13).alphanum().required(),
+    email : Joi.string().email().required(),
+    password : Joi.string().min(6).max(13).pattern(/[!@#$%^&*_]/).pattern(/[0-9]/).required(),
+    repeat_password: Joi.ref('password')
+})
