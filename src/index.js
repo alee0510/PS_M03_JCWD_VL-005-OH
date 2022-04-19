@@ -27,6 +27,8 @@ app.get('/', (req, res) => res.status(200).send('<h1>Wellcome to My REST-APIs</h
 // setup router
 const routers = require('./routes')
 app.use('/api', routers.student_router)
+app.use('/api', routers.program_router)
+app.use('/api', routers.city_router)
 
 // binding
 const PORT = process.env.PORT || 5000
