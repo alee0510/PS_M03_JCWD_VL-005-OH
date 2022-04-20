@@ -5,6 +5,9 @@ const { user_controller } = require('../controllers')
 
 // define route
 router.post('/users', user_controller.register)
+router.get('/users', user_controller.getUsers)
+router.get('/users/:uid', user_controller.getUserById)
+router.get('/auth/verify', user_controller.verifyAccount)
 
 // export * module
 module.exports = router
