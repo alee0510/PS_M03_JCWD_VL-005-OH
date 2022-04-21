@@ -57,7 +57,7 @@ module.exports.register = async (req, res) => {
 
         // 8. send otp to client -> via email        
         const TRANSPORTER_INFO = await transporter.sendMail({
-            from : '<admin> ali.muksin0510@gmail.com',
+            from : 'admin <ali.muksin0510@gmail.com>',
             to : 'fullstack.manager.pwdk@gmail.com',
             subject : 'OTP Verification',
             html: 
@@ -136,7 +136,15 @@ module.exports.verifyAccount = async (req, res) => {
 // update value token -> generate new token and update created-at
 // send token to client -> via email and UID via headers
 module.exports.refreshToken = async (req, res) => {
+    try {
 
+    } catch (error) {
+        const isTrusted = error instanceof createError
+        if (!isTrusted) {
+            error = new createError(http_status.INTERNAL_SERVER_ERROR, error.sqlMessage)
+        }
+        res.status(error.status).send(error) 
+    }
 }
 
 // GET USER + GET USER by ID
