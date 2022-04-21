@@ -9,6 +9,8 @@ router.get('/users', user_controller.getUsers)
 router.get('/users/:uid', user_controller.getUserById)
 router.get('/auth/verify', user_controller.verifyAccount)
 router.post('/auth/refresh', user_controller.refreshToken)
+router.post('/auth/login', user_controller.login)
+router.get('/auth/keeplogin', user_controller.keepLogin)
 
 // export * module
 module.exports = router

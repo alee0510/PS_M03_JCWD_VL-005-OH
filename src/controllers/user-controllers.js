@@ -1,12 +1,13 @@
 const uuid = require('uuid')
 const bcrypt = require('bcrypt')
 const { totp } = require('otplib')
+const jwt = require('jsonwebtoken')
 const { transporter } = require('../helpers/transporter')
 const database = require('../config').promise()
 const createError = require('../helpers/create-error')
 const createRespond = require('../helpers/create-respond')
 const http_status = require('../helpers/http-status')
-const { registerSchema } = require('../helpers/validation-schema')
+const { registerSchema, loginSchema } = require('../helpers/validation-schema')
 
 module.exports.register = async (req, res) => {
     const { username, email, password, repeat_password } = req.body
@@ -58,7 +59,7 @@ module.exports.register = async (req, res) => {
         // 8. send otp to client -> via email        
         const TRANSPORTER_INFO = await transporter.sendMail({
             from : 'admin <ali.muksin0510@gmail.com>',
-            to : 'fullstack.manager.pwdk@gmail.com',
+            to : `${email}`,
             subject : 'OTP Verification',
             html: 
             `
@@ -107,7 +108,7 @@ module.exports.verifyAccount = async (req, res) => {
 
         // validate token
         const step = now - created // miliseconds
-        if (step >= 1800000) { // 180 seconds
+        if (step >= 30000) { // 30 seconds
             throw new createError(http_status.BAD_REQUEST, 'token expired.')
         }
 
@@ -136,8 +137,51 @@ module.exports.verifyAccount = async (req, res) => {
 // update value token -> generate new token and update created-at
 // send token to client -> via email and UID via headers
 module.exports.refreshToken = async (req, res) => {
+    // capture UID and token
+    const token = req.body.token
+    const UID = req.header('uid')
     try {
+        // validate token 
+        const CHECK_TOKEN = `SELECT token, createdAt FROM token WHERE uid = ? AND token = ?;`
+        const [ TOKEN ] = await database.execute(CHECK_TOKEN, [UID, token])
+        if (!TOKEN.length) {
+            throw new createError(http_status.BAD_REQUEST, 'invalid token.')
+        }
 
+        // if token exist -> check if token still valid or not
+        const created = new Date(TOKEN[0].createdAt).getTime()
+        const now = new Date().getTime()
+        const step = now - created
+        const remaining_time = Math.floor((30000 - step) / 1000)
+        // if token still valid and not yet expired
+        if (step <= 30000) {
+            throw new createError(http_status.BAD_REQUEST, `please wait for ${remaining_time}s to refresh your token.`)
+        }
+
+        // get email
+        const GET_EMAIL = `SELECT email FROM users WHERE uid = ?;`
+        const [ EMAIL ] = await database.execute(GET_EMAIL, [UID])
+
+        // if token has been expired -> update token
+        const otp = totp.generate(UID)
+        const UPDATE_TOKEN = `UPDATE token SET token = ?, createdAt = ? WHERE uid = ?;`
+        const [ INFO ] = await database.execute(UPDATE_TOKEN, [otp, new Date(), UID])
+
+        // send token to client email
+        await transporter.sendMail({
+            from : 'admin <ali.muksin0510@gmail.com>',
+            to : `${EMAIL[0].email}`,
+            subject : 'OTP Verification',
+            html: 
+            `
+                <p>This is your verify code, do not share to others.</p>
+                <p>TOKEN : ${otp}</p>
+            `
+        })
+
+        // create respond
+        const respond = new createRespond(http_status.OK, 'refresh token', true, 1, 1, INFO.info)
+        res.status(respond.status).send(respond)
     } catch (error) {
         const isTrusted = error instanceof createError
         if (!isTrusted) {
@@ -177,6 +221,79 @@ module.exports.getUserById = async (req, res) => {
         const respond = new createRespond(http_status.OK, 'get', true, 1, 1, USER[0])
         res.status(respond.status).send(respond)
     } catch (error) {
+        const isTrusted = error instanceof createError
+        if (!isTrusted) {
+            error = new createError(http_status.INTERNAL_SERVER_ERROR, error.sqlMessage)
+        }
+        res.status(error.status).send(error)
+    }
+}
+
+// LOGIN
+module.exports.login = async (req, res) => {
+    const { username, password } = req.body // { username & password }
+    try {
+        // 1.validate req.body
+        const { error } = loginSchema.validate(req.body)
+        if (error) {
+            throw new createError(http_status.BAD_REQUEST, error.details[0].message)
+        }
+
+        // 2. validate username in our database
+        const CHECK_USER = `SELECT * FROM users WHERE username = ?;`
+        const [ USER ] = await database.execute(CHECK_USER, [username])
+        if (!USER.length) {
+            throw new createError(http_status.NOT_FOUND, 'user has not been register.')
+        }
+
+        // 3. if user already resgitered => validate password
+        const isValid = await bcrypt.compare(password, USER[0].password)
+        if(!isValid) {
+            throw new createError(http_status.BAD_REQUEST, 'invalid password.')
+        }
+
+        // 4. if password valid, -> create token using JWT
+        const token = jwt.sign({ uid : USER[0].uid }, process.env.SECRET_KEY)
+        console.log('login token:', token)
+
+        // 5. create respond and sent token to client
+        delete USER[0].password
+        const respond = new createRespond(http_status.OK, 'login', true, 1, 1, USER[0])
+        res.header('Auth-Token', `Bearer ${token}`).status(respond.status).send(respond)
+    } catch (error) {
+        console.log(error)
+        const isTrusted = error instanceof createError
+        if (!isTrusted) {
+            error = new createError(http_status.INTERNAL_SERVER_ERROR, error.sqlMessage)
+        }
+        res.status(error.status).send(error)
+    }
+}
+
+// KEEPLOGIN -> FRONTEND WANT TO RETRIEVE USER'S DATA AFTER PAGE REFRSHED
+module.exports.keepLogin = async (req, res) => {
+    const token = req.header('Auth-Token')
+    try {
+        // check token
+        if (!token) {
+            throw new createError(http_status.UNAUTORIZHED, 'token is required.')
+        }
+
+        // if token exist -> validate token
+        const { uid } = jwt.verify(token, process.env.SECRET_KEY)
+        if (!uid) {
+            throw new createError(http_status.BAD_REQUEST, 'invalid token.')
+        }
+
+        // if token valid => retrieve user's data
+        const GET_USER = `SELECT * FROM users WHERE uid = ?;`
+        const [ USER ] = await database.execute(GET_USER, [uid])
+
+        // create respond
+        const respond = new createRespond(http_status.OK, 'keeplogin', true, 1, 1, USER[0])
+        res.status(respond.status).send(respond)
+    } catch (error) {
+        console.log(error)
         const isTrusted = error instanceof createError
         if (!isTrusted) {
             error = new createError(http_status.INTERNAL_SERVER_ERROR, error.sqlMessage)

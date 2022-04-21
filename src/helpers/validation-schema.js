@@ -21,3 +21,8 @@ module.exports.registerSchema = Joi.object({
     password : Joi.string().min(6).max(13).pattern(/[!@#$%^&*_]/).pattern(/[0-9]/).required(),
     repeat_password: Joi.ref('password')
 })
+
+module.exports.loginSchema = Joi.object({
+    username : Joi.string().min(6).max(13).alphanum().required(),
+    password : Joi.string().min(6).max(13).pattern(/[!@#$%^&*_]/).pattern(/[0-9]/).required()
+})
